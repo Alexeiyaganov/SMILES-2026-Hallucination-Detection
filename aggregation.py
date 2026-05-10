@@ -45,14 +45,18 @@ def aggregate(
     # STUDENT: Replace or extend the aggregation below.
     # ------------------------------------------------------------------
 
-    # Default: last real token of the final transformer layer.
-    layer = hidden_states[-1]          # (seq_len, hidden_dim)
+    # Multi-layer fusion: select middle layers and mean-pool over real tokens.
+    LAYER_INDICES = [8, 12, 16, 20]  # middle layers carry richest semantics
 
-    # Find the index of the last real (non-padding) token.
-    real_positions = attention_mask.nonzero(as_tuple=False)  # (n_real, 1)
-    last_pos = int(real_positions[-1].item())                 # scalar index
+    selected = hidden_states[LAYER_INDICES]  # (n_selected, seq_len, hidden_dim)
 
-    feature = layer[last_pos]          # (hidden_dim,)
+    # Mean pooling over all real (non-padding) tokens per layer
+    mask_expanded = attention_mask.unsqueeze(0).unsqueeze(-1)  # (1, seq_len, 1)
+    selected_masked = selected * mask_expanded
+    token_counts = mask_expanded.sum(dim=1).clamp(min=1)  # (1, 1)
+    features = selected_masked.sum(dim=1) / token_counts  # (n_selected, hidden_dim)
+
+    feature = features.flatten()  # (n_selected * hidden_dim,)
 
     return feature
     # ------------------------------------------------------------------
@@ -64,7 +68,7 @@ def extract_geometric_features(
 ) -> torch.Tensor:
     """Extract hand-crafted geometric / statistical features from hidden states.
 
-    Called only when ``USE_GEOMETRIC = True`` in ``solution.ipynb``.  The
+    Called only when ``USE_GEOMETRIC = True`` in ``solution.py``.  The
     returned tensor is concatenated with the output of ``aggregate``.
 
     Args:
@@ -85,8 +89,41 @@ def extract_geometric_features(
     # STUDENT: Replace or extend the geometric feature extraction below.
     # ------------------------------------------------------------------
 
-    # Placeholder: returns an empty tensor (no geometric features).
-    return torch.zeros(0)
+    import torch.nn.functional as F
+
+    real_mask = attention_mask.bool()
+    n_layers = hidden_states.size(0)
+    features_list = []
+
+    for layer_idx in range(n_layers):
+        layer = hidden_states[layer_idx]
+        real_tokens = layer[real_mask]
+
+        if real_tokens.size(0) == 0:
+            features_list.append(torch.zeros(1))  # norm
+            features_list.append(torch.zeros(1))  # std
+            continue
+
+        mean_vec = real_tokens.mean(dim=0)
+        features_list.append(mean_vec.norm().unsqueeze(0))       # per-layer norm
+
+        std_per_dim = real_tokens.std(dim=0)
+        features_list.append(std_per_dim.mean().unsqueeze(0))    # per-layer mean std
+
+    # Cosine similarity between first and last selected aggregatable layer
+    LAYER_INDICES = [8, 12, 16, 20]
+    first_real = hidden_states[LAYER_INDICES[0]][real_mask]
+    last_real = hidden_states[LAYER_INDICES[-1]][real_mask]
+    if first_real.size(0) > 0 and last_real.size(0) > 0:
+        cos_sim = F.cosine_similarity(
+            first_real.mean(dim=0).unsqueeze(0),
+            last_real.mean(dim=0).unsqueeze(0),
+        )
+        features_list.append(cos_sim)
+    else:
+        features_list.append(torch.zeros(1))
+
+    return torch.cat(features_list, dim=0)
 
 
 def aggregation_and_feature_extraction(
