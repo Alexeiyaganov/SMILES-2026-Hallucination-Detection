@@ -89,6 +89,8 @@ class HallucinationProbe(nn.Module):
         Returns:
             ``self`` (for method chaining).
         """
+        X_scaled = self._scaler.fit_transform(X)
+
         from sklearn.decomposition import PCA
         n_components = min(256, X_scaled.shape[0] // 2)
         self._pca = PCA(n_components=n_components, random_state=42)
@@ -186,9 +188,11 @@ class HallucinationProbe(nn.Module):
             estimated probability of the hallucinated class (label 1).
             Used to compute AUROC.
         """
-        if self._pca is not None:
-            X = self._pca.transform(X)
         X_scaled = self._scaler.transform(X)
+        if self._pca is not None:
+            X_scaled = self._pca.transform(X_scaled)
+
+
         X_t = torch.from_numpy(X_scaled).float()
         with torch.no_grad():
             logits = self(X_t)

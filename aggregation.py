@@ -46,7 +46,7 @@ def aggregate(
     # ------------------------------------------------------------------
 
     # Multi-layer fusion: select middle layers and mean-pool over real tokens.
-    LAYER_INDICES = [8, 12, 16, 20]  # middle layers carry richest semantics
+    LAYER_INDICES = [16, 20]  # middle layers carry richest semantics
 
     selected = hidden_states[LAYER_INDICES]  # (n_selected, seq_len, hidden_dim)
 
