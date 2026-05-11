@@ -30,6 +30,7 @@ class HallucinationProbe(nn.Module):
         self._net: nn.Sequential | None = None  # built lazily in fit()
         self._scaler = StandardScaler()
         self._threshold: float = 0.5  # tuned by fit_hyperparameters()
+        self._pca = None
 
     # ------------------------------------------------------------------
     # STUDENT: Replace or extend the network definition below.
@@ -88,7 +89,10 @@ class HallucinationProbe(nn.Module):
         Returns:
             ``self`` (for method chaining).
         """
-        X_scaled = self._scaler.fit_transform(X)
+        from sklearn.decomposition import PCA
+        n_components = min(256, X_scaled.shape[0] // 2)
+        self._pca = PCA(n_components=n_components, random_state=42)
+        X_scaled = self._pca.fit_transform(X_scaled)
 
         self._build_network(X_scaled.shape[1])
 
@@ -182,6 +186,8 @@ class HallucinationProbe(nn.Module):
             estimated probability of the hallucinated class (label 1).
             Used to compute AUROC.
         """
+        if self._pca is not None:
+            X = self._pca.transform(X)
         X_scaled = self._scaler.transform(X)
         X_t = torch.from_numpy(X_scaled).float()
         with torch.no_grad():
