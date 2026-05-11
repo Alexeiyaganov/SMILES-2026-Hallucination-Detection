@@ -111,7 +111,7 @@ def extract_geometric_features(
         features_list.append(std_per_dim.mean().unsqueeze(0))    # per-layer mean std
 
     # Cosine similarity between first and last selected aggregatable layer
-    LAYER_INDICES = [8, 12, 16, 20]
+    LAYER_INDICES = [16, 20]
     first_real = hidden_states[LAYER_INDICES[0]][real_mask]
     last_real = hidden_states[LAYER_INDICES[-1]][real_mask]
     if first_real.size(0) > 0 and last_real.size(0) > 0:
