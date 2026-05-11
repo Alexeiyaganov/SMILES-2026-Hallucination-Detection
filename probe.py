@@ -35,17 +35,26 @@ class HallucinationProbe(nn.Module):
     # STUDENT: Replace or extend the network definition below.
     # ------------------------------------------------------------------
     def _build_network(self, input_dim: int) -> None:
-        """Instantiate the network layers.
+        """
+        Instantiate the network layers.
 
         Called once at the start of ``fit()`` when ``input_dim`` is known.
 
         Args:
             input_dim: Feature vector dimensionality.
         """
+        hidden_dim = 512
+        dropout = 0.3
         self._net = nn.Sequential(
-            nn.Linear(input_dim, 256),
+            nn.Linear(input_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
             nn.ReLU(),
-            nn.Linear(256, 1),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.BatchNorm1d(hidden_dim // 2),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim // 2, 1),
         )
 
     # ------------------------------------------------------------------
@@ -95,15 +104,19 @@ class HallucinationProbe(nn.Module):
         # ------------------------------------------------------------------
         # STUDENT: Replace or extend the training loop below.
         # ------------------------------------------------------------------
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3, weight_decay=1e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=300, eta_min=1e-5
+        )
 
         self.train()
-        for _ in range(200):
+        for _ in range(300):
             optimizer.zero_grad()
             logits = self(X_t)
             loss = criterion(logits, y_t)
             loss.backward()
             optimizer.step()
+            scheduler.step()
         # ------------------------------------------------------------------
 
         self.eval()
