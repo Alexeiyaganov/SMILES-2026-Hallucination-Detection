@@ -139,7 +139,7 @@ if __name__=='__main__':
         # ── 3. Stack all layers into one tensor, move to CPU ─────────────────
         # Shape: (batch, n_layers, seq_len, hidden_dim)
         hidden = torch.stack(outputs.hidden_states, dim=1).float()
-        mask   = attention_mask.cpu()
+        mask   = attention_mask
 
         # ── 4. Aggregate each sample and store the compact feature vector ─────
         # The raw `hidden` tensor is released at the end of this loop iteration.
@@ -202,7 +202,7 @@ if __name__=='__main__':
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
 
         hidden = torch.stack(outputs.hidden_states, dim=1).float()
-        mask   = attention_mask.cpu()
+        mask   = attention_mask
 
         for i in range(hidden.size(0)):
             feat = aggregation_and_feature_extraction(
