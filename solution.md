@@ -64,13 +64,17 @@ Splitting (splitting.py)
 I started with a single 70/15/15 split (the default). Metrics were jumping ±5% between runs depending on the random seed. 5-fold averages this out and gives a more honest estimate.
 
 What actually helped
-Multiple layers instead of one. Biggest single improvement. Jumped from ~60% to ~75% test accuracy.
+The initial run with 4 layers [8,12,16,20] and 3584 features gave **Test AUROC = 67.94%** — barely above the majority-class baseline. The probe was memorising the training set (100% train AUROC on most folds) and failing to generalise.
 
-Mean pooling over last-token. Another clear gain — the model can see the whole response, not just the final token.
+After seeing these results, I made several changes:
 
-BatchNorm + Dropout. Prevented overfitting on training set. Without them, train accuracy was 95%+ and test was bad.
+1. **Reduced layers from 4 to 2** ([16, 20] instead of [8,12,16,20]). Feature dimension dropped from 3584 to 1792.
+2. **Increased Dropout from 0.3 to 0.5** and reduced hidden dim from 512 to 256 — fewer parameters, stronger regularisation.
+3. **Increased weight decay from 1e-4 to 1e-3.**
+4. **Added PCA reduction** to 256 components before the MLP. This was the single biggest improvement — it forced the model to learn a compressed representation instead of memorising noise.
+5. **Reduced epochs from 300 to 150** to prevent overfitting.
 
-Cosine annealing. More stable convergence, consistently better validation loss than constant LR.
+These changes closed the gap between train and validation AUROC significantly.
 
 3. Experiments and Failed Attempts
 Ideas I tried and discarded:
@@ -85,6 +89,8 @@ Single split instead of 5-fold. The default in the skeleton code. I ran it three
 No pos_weight in the loss. The model learned to predict "hallucinated" almost every time, because that's the majority class. Accuracy looked okay (~70%) but F1 was terrible. Adding pos_weight based on the actual class ratio fixed this.
 
 Constant learning rate. With lr=1e-3 constant, the loss curve was noisy and the final validation AUROC was lower than with cosine annealing. Not a huge difference, but consistent.
+
+**First run — 4 layers, no PCA.** 3584 features on 447 training samples is too many. The probe achieved 100% train AUROC and ~68% test AUROC, which is barely above baseline. Clear overfitting. This motivated the dimensionality reduction approach.
 
 4. Link to Predictions
 predictions.csv is in the repository root:
