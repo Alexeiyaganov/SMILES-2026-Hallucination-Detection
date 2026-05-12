@@ -80,7 +80,7 @@ if __name__=='__main__':
     df = pd.read_csv(DATA_FILE)
 
     # Build the text fed to the LLM: concatenation of prompt and response.
-    all_texts  = [f"{row['response']}" for _, row in df.iterrows()]
+    all_texts = [f"{row['prompt']}{row['response']}" for _, row in df.iterrows()]
     all_labels = np.array([int(float(h)) for h in df["label"]])
 
     n_total = len(all_labels)

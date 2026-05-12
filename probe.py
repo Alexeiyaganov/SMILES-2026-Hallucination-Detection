@@ -89,6 +89,19 @@ class HallucinationProbe(nn.Module):
             ``self`` (for method chaining).
         """
         X_scaled = self._scaler.fit_transform(X)
+
+        # Augment: add noisy copies of training samples (helps with small datasets)
+        n_aug = 2  # number of augmented copies per sample
+        X_aug_list = [X_scaled]
+        y_aug_list = [y]
+        np.random.seed(42)
+        for _ in range(n_aug):
+            noise = np.random.normal(0, 0.05, X_scaled.shape).astype(np.float32)
+            X_aug_list.append(X_scaled + noise)
+            y_aug_list.append(y)
+        X_scaled = np.vstack(X_aug_list)
+        y = np.concatenate(y_aug_list)
+
         self._build_network(X_scaled.shape[1])
 
         X_t = torch.from_numpy(X_scaled).float()
