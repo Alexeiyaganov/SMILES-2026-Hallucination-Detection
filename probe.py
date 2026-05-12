@@ -96,7 +96,7 @@ class HallucinationProbe(nn.Module):
 
         # Weight positive examples by neg/pos ratio to handle class imbalance.
         n_pos = int(y.sum())
-        n_neg = len(y) - n_posr _ in range(100)
+        n_neg = len(y) - n_pos
         pos_weight = torch.tensor([n_neg / max(n_pos, 1)], dtype=torch.float32)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
@@ -105,7 +105,7 @@ class HallucinationProbe(nn.Module):
         # ------------------------------------------------------------------
         optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3, weight_decay=1e-2)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=300, eta_min=1e-5
+            optimizer, T_max=150, eta_min=1e-5
         )
 
         self.train()
