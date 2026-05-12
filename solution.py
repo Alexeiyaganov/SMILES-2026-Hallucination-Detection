@@ -80,7 +80,7 @@ if __name__=='__main__':
     df = pd.read_csv(DATA_FILE)
 
     # Build the text fed to the LLM: concatenation of prompt and response.
-    all_texts  = [f"{row['prompt']}{row['response']}" for _, row in df.iterrows()]
+    all_texts  = [f"{row['response']}" for _, row in df.iterrows()]
     all_labels = np.array([int(float(h)) for h in df["label"]])
 
     n_total = len(all_labels)
@@ -177,7 +177,7 @@ if __name__=='__main__':
 
     # ── Load test data ────────────────────────────────────────────────────────
     df_test    = pd.read_csv(TEST_FILE)
-    test_texts = [f"{row['prompt']}{row['response']}" for _, row in df_test.iterrows()]
+    test_texts = [f"{row['response']}" for _, row in df_test.iterrows()]
     test_ids   = df_test.index
     print(f"Test set loaded: {len(test_texts)} samples")
 

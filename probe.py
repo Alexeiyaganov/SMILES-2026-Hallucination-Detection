@@ -30,7 +30,6 @@ class HallucinationProbe(nn.Module):
         self._net: nn.Sequential | None = None  # built lazily in fit()
         self._scaler = StandardScaler()
         self._threshold: float = 0.5  # tuned by fit_hyperparameters()
-        self._pca = None
 
     # ------------------------------------------------------------------
     # STUDENT: Replace or extend the network definition below.
@@ -44,8 +43,8 @@ class HallucinationProbe(nn.Module):
         Args:
             input_dim: Feature vector dimensionality.
         """
-        hidden_dim = 216
-        dropout = 0.6
+        hidden_dim = 128
+        dropout = 0.7
         self._net = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
@@ -90,12 +89,6 @@ class HallucinationProbe(nn.Module):
             ``self`` (for method chaining).
         """
         X_scaled = self._scaler.fit_transform(X)
-
-        from sklearn.decomposition import PCA
-        n_components = min(256, X_scaled.shape[0] // 2)
-        self._pca = PCA(n_components=n_components, random_state=42)
-        X_scaled = self._pca.fit_transform(X_scaled)
-
         self._build_network(X_scaled.shape[1])
 
         X_t = torch.from_numpy(X_scaled).float()
@@ -103,14 +96,14 @@ class HallucinationProbe(nn.Module):
 
         # Weight positive examples by neg/pos ratio to handle class imbalance.
         n_pos = int(y.sum())
-        n_neg = len(y) - n_pos
+        n_neg = len(y) - n_posr _ in range(100)
         pos_weight = torch.tensor([n_neg / max(n_pos, 1)], dtype=torch.float32)
         criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
         # ------------------------------------------------------------------
         # STUDENT: Replace or extend the training loop below.
         # ------------------------------------------------------------------
-        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3, weight_decay=1e-3)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3, weight_decay=1e-2)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=300, eta_min=1e-5
         )
@@ -189,8 +182,6 @@ class HallucinationProbe(nn.Module):
             Used to compute AUROC.
         """
         X_scaled = self._scaler.transform(X)
-        if self._pca is not None:
-            X_scaled = self._pca.transform(X_scaled)
 
 
         X_t = torch.from_numpy(X_scaled).float()

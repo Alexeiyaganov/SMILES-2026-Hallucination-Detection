@@ -46,17 +46,22 @@ def aggregate(
     # ------------------------------------------------------------------
 
     # Multi-layer fusion: select middle layers and mean-pool over real tokens.
-    LAYER_INDICES = [16, 20]  # middle layers carry richest semantics
+    LAYER_INDICES = [8, 12]  # middle layers carry richest semantics
 
     selected = hidden_states[LAYER_INDICES]  # (n_selected, seq_len, hidden_dim)
 
-    # Mean pooling over all real (non-padding) tokens per layer
-    mask_expanded = attention_mask.unsqueeze(0).unsqueeze(-1)  # (1, seq_len, 1)
-    selected_masked = selected * mask_expanded
-    token_counts = mask_expanded.sum(dim=1).clamp(min=1)  # (1, 1)
-    features = selected_masked.sum(dim=1) / token_counts  # (n_selected, hidden_dim)
+    # Concatenate last-token and mean-pooled representation
+    real_positions = attention_mask.nonzero(as_tuple=False).squeeze(-1)
+    last_pos = real_positions[-1].item()
+    last_token_features = selected[:, last_pos, :]  # (n_selected, hidden_dim)
 
-    feature = features.flatten()  # (n_selected * hidden_dim,)
+    mask_expanded = attention_mask.unsqueeze(0).unsqueeze(-1)
+    selected_masked = selected * mask_expanded
+    token_counts = mask_expanded.sum(dim=1).clamp(min=1)
+    mean_features = selected_masked.sum(dim=1) / token_counts  # (n_selected, hidden_dim)
+
+    features = torch.cat([last_token_features, mean_features], dim=1)  # (n_selected, 2*hidden_dim)
+    feature = features.flatten()
 
     return feature
     # ------------------------------------------------------------------
