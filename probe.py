@@ -103,7 +103,7 @@ class HallucinationProbe(nn.Module):
         # ------------------------------------------------------------------
         # STUDENT: Replace or extend the training loop below.
         # ------------------------------------------------------------------
-        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3, weight_decay=1e-2)
+        optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3, weight_decay=1e-3)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=150, eta_min=1e-5
         )
@@ -113,6 +113,8 @@ class HallucinationProbe(nn.Module):
             optimizer.zero_grad()
             logits = self(X_t)
             loss = criterion(logits, y_t)
+            l1_penalty = sum(p.abs().sum() for p in self.parameters())
+            loss = loss + 1e-5 * l1_penalty
             loss.backward()
             optimizer.step()
             scheduler.step()
